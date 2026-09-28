@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<script type="module">
+  		import { ghostCursor } from "https://unpkg.com/cursor-effects@latest/dist/esm.js";
+
+  		new ghostCursor();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Bomb</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: white;
+        }
+
+        #screen {
+            position: fixed;
+            left: 0;
+            top: 0;
+        }
+
+        .controls {
+	    position: absolute;
+	    right: 3%;
+	    top: 3%;
+	    z-index: 2; border: none;}
+
+	    .controls input[type="range"] {
+	    border: none;
+	    outline: none;
+	    accent-color: greenyellow;background-color: rgb(218, 218, 218);
+    
+		}
+
+	    
+		
+	
+    </style>
+</head>
+
+<body>
+	<div class="controls">
+    <input
+        type="range"
+        id="sizeSlider"
+        min="5"
+        max="20"
+        value="10"
+    >
+
+    <input
+        type="range"
+        id="speedSlider"
+        min="0.2"
+        max="3"
+        step="0.1"
+        value="1"
+    >
+</div>
+
+	<canvas id="screen"></canvas>
+
+    <canvas id="screen"></canvas>
+
+    <script>
+        const canvas = document.getElementById("screen");
+        const ctx = canvas.getContext("2d");
+
+        let width;
+        let height;
+
+        let circles = [];
+        let particles = [];
+
+        const sound1 = new Audio("1.mp3");
+        const sound2 = new Audio("2.mp3");
+        const sound3 = new Audio("3.mp3");
+
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+
+        function randomColor() {
+            const hue = Math.floor(Math.random() * 360);
+
+            return `hsl(${hue}, 100%, 60%)`;
+        }
+
+
+       function makeCircle() {
+    const circle = {
+        baseRadius: Math.random() * 10 + 5,
+
+        radius: 10,
+
+        x: Math.random() * width,
+        y: Math.random() * height,
+
+        dx: (Math.random() - 0.5) * 1.5,
+        dy: (Math.random() - 0.5) * 1.5,
+
+        color: randomColor()
+	    };
+
+	    return circle;
+	}
+
+
+        for (let i = 0; i < 50; i++) {
+            circles.push(makeCircle());
+        }
+
+
+        function drawCircle(circle) {
+            ctx.beginPath();
+
+            ctx.arc(
+                circle.x,
+                circle.y,
+                circle.radius,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fillStyle = circle.color;
+            ctx.fill();
+        }
+
+
+        function updateCircle(circle) {
+	    circle.radius =
+	        circle.baseRadius * Number(sizeSlider.value) / 10;
+
+	    const speed = Number(speedSlider.value);
+
+	    circle.x += circle.dx * speed;
+	    circle.y += circle.dy * speed;
+
+	    if (
+	        circle.x < circle.radius ||
+	        circle.x > width - circle.radius
+	    ) {
+	        circle.dx *= -1;
+	    }
+
+	    if (
+	        circle.y < circle.radius ||
+	        circle.y > height - circle.radius
+	    ) {
+	        circle.dy *= -1;
+	    }
+
+	    drawCircle(circle);
+	}
+
+
+        function isClicked(circle, mouseX, mouseY) {
+            const distance = Math.sqrt(
+                (mouseX - circle.x) ** 2 +
+                (mouseY - circle.y) ** 2
+            );
+
+            if (distance <= circle.radius) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+
+        function explodeCircle(circle) {
+            for (let i = 0; i < 12; i++) {
+                const particle = {
+                    x: circle.x,
+                    y: circle.y,
+
+                    radius: Math.random() * 3 + 2,
+
+                    dx: (Math.random() - 0.5) * 6,
+                    dy: (Math.random() - 0.5) * 6,
+
+                    color: circle.color,
+                    life: 1
+                };
+
+                particles.push(particle);
+            }
+        }
+
+
+        function updateParticle(particle) {
+            particle.x += particle.dx;
+            particle.y += particle.dy;
+
+            
+
+            if (
+                particle.radius <= 0 ||
+                particle.life <= 0
+            ) {
+                return false;
+            }
+
+            ctx.globalAlpha = particle.life;
+            drawCircle(particle);
+            ctx.globalAlpha = 1;
+
+            return true;
+        }
+
+
+        function playRandomSound() {
+            sound1.pause();
+            sound2.pause();
+            sound3.pause();
+
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound3.currentTime = 0;
+
+            const soundNumber = Math.floor(Math.random() * 3) + 1;
+
+            if (soundNumber === 1) {
+                sound1.play();
+            } else if (soundNumber === 2) {
+                sound2.play();
+            } else if (soundNumber === 3) {
+                sound3.play();
+            }
+        }
+
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < circles.length; i++) {
+                updateCircle(circles[i]);
+            }
+
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const alive = updateParticle(particles[i]);
+
+                if (alive === false) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+
+        canvas.addEventListener("click", function(event) {
+    const mouseX = event.clientX;
+    const mouseY = event.clientY;
+
+    for (let i = circles.length - 1; i >= 0; i--) {
+        const circle = circles[i];
+
+        if (isClicked(circle, mouseX, mouseY)) {
+
+            if (document.body.style.backgroundColor === "black") {
+    			document.body.style.backgroundColor = "white";
+			} else {
+    			document.body.style.backgroundColor = "black";
+					}
+
+            explodeCircle(circle);
+
+            circles.splice(i, 1);
+
+            circles.push(makeCircle());
+
+            playRandomSound();
+
+            break;
+        }
+    }
+});
+
+
+        
+    </script>
+
+</body>
+</html>
